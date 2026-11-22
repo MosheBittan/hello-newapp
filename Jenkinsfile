@@ -61,8 +61,12 @@ podTemplate(containers: [
                 '''
                 // log in BEFORE the build: base images are pulled as <user>, not anonymously
                 // (all pods behind one NAT IP share Docker Hub's anonymous pull limit)
-                withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_TOKEN')]) {
-                    sh "echo \"\$DOCKER_TOKEN\" | docker login -u \"\$DOCKER_USER\" --password-stdin"
+                withCredentials([string(credentialsId: 'docker-cred', variable: 'DOCKER_TOKEN')]) {
+                    sh """
+                        set +x
+                        printf '%s' "\$DOCKER_TOKEN" |
+                            docker login --username "${user}" --password-stdin
+                    """
                 }
                 echo "Building ${appimage}:${apptag}"
                 sh "docker build --network=host -t ${appimage}:${apptag} -t ${appimage}:latest \"${env.WORKSPACE}\""
