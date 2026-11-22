@@ -26,7 +26,7 @@ def serviceMon  = params.SERVICE_MONITOR ? 'true' : 'false'
 def storageDrv  = params.DIND_STORAGE_DRIVER ?: 'overlay2'
 def gitopsRepo  = "github.com/elevy99927-demos/gitops.git"
 def gitopsFile  = "systems/${department}/${envName}/${user}.yaml"
-def gitopsFileDashboard  = "dashboard/${user}.yaml"
+def gitopsFileDashboard  = "dashboards/${user}.yaml"
 
 podTemplate(containers: [
       containerTemplate(name: 'jnlp', image: 'jenkins/inbound-agent', ttyEnabled: true),
