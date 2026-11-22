@@ -132,7 +132,7 @@ podTemplate(containers: [
        stage('add-dashboard') {
     container('deployer') {
         withEnv([
-            "DASHBOARD_SOURCE=${env.WORKSPACE}/dashbaord.yaml",
+            "DASHBOARD_SOURCE=${env.WORKSPACE}/grafana-dashboard.json",
             "DASHBOARD_TARGET=${gitopsFileDashboard}",
             "GITOPS_URL=https://${gitopsRepo}"
         ]) {
