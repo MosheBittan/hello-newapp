@@ -26,6 +26,7 @@ def serviceMon  = params.SERVICE_MONITOR ? 'true' : 'false'
 def storageDrv  = params.DIND_STORAGE_DRIVER ?: 'overlay2'
 def gitopsRepo  = "github.com/elevy99927-demos/gitops.git"
 def gitopsFile  = "systems/${department}/${envName}/${user}.yaml"
+def gitopsFileDashboard  = "dashboard/${user}.yaml"
 
 podTemplate(containers: [
       containerTemplate(name: 'jnlp', image: 'jenkins/inbound-agent', ttyEnabled: true),
@@ -128,12 +129,54 @@ podTemplate(containers: [
             }
         }
 
-        stage('add-dashboard') {
-            container('deployer') {
-                sh """
-                    echo " TBD: Add dashboard to grafana"
-                """
+       stage('add-dashboard') {
+    container('deployer') {
+        withEnv([
+            "DASHBOARD_SOURCE=${env.WORKSPACE}/dashbaord.yaml",
+            "DASHBOARD_TARGET=${gitopsFileDashboard}",
+            "GITOPS_URL=https://${gitopsRepo}"
+        ]) {
+            dir('gitops') {
+                withCredentials([gitUsernamePassword(
+                    credentialsId: 'github-token',
+                    gitToolName: 'Default'
+                )]) {
+                    sh '''
+                        set -eu
+
+                        if [ ! -f "$DASHBOARD_SOURCE" ]; then
+                            echo "Dashboard file not found: $DASHBOARD_SOURCE" >&2
+                            exit 1
+                        fi
+
+                        git remote set-url origin "$GITOPS_URL"
+                        mkdir -p "$(dirname "$DASHBOARD_TARGET")"
+                        cp "$DASHBOARD_SOURCE" "$DASHBOARD_TARGET"
+
+                        git add -- "$DASHBOARD_TARGET"
+                        if git diff --cached --quiet -- "$DASHBOARD_TARGET"; then
+                            echo "Dashboard unchanged: $DASHBOARD_TARGET"
+                            exit 0
+                        fi
+
+                        git commit -m "Update Grafana dashboard $DASHBOARD_TARGET" \
+                            -- "$DASHBOARD_TARGET"
+
+                        for attempt in 1 2 3 4 5; do
+                            if git push origin HEAD:main; then
+                                exit 0
+                            fi
+                            [ "$attempt" -lt 5 ] || break
+                            git pull --rebase origin main
+                        done
+
+                        echo "Dashboard push failed after 5 attempts" >&2
+                        exit 1
+                    '''
+                }
             }
         }
+    }
+}
     }
   }
